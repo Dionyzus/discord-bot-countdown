@@ -1,6 +1,10 @@
 import discord
 import asyncio
+import os
 from constants import *
+from dotenv import load_dotenv
+
+load_dotenv('.env')
 
 client = discord.Client()
 
@@ -106,4 +110,5 @@ async def handle_seconds_countdown(message, timer, sleepTime, boss):
 def create_message(*args):
     return ' '.join(args)
 
-client.run(SECRET_TOKEN)
+client.run(os.environ.get('TOKEN'))
+#client.run(SECRET_TOKEN)
