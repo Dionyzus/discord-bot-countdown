@@ -20,10 +20,13 @@ async def on_message(message):
     boss = ''
     respawn_window = 0
     if message.content.startswith(COMMAND_KEY):
-        boss, respawn_window = get_respawn_window(message)
-        original_message = await message.channel.send(create_message(boss, RS_STARTS_IN, respawn_window))
-
-        await countdown(original_message, respawn_window, boss)
+        try:
+            boss, respawn_window = get_respawn_window(message)
+            original_message = await message.channel.send(create_message(boss, RS_STARTS_IN, respawn_window))
+            await countdown(original_message, respawn_window, boss)
+        except ValueError:
+            await message.channel.send(create_message(boss, BOSS_INPUT_ERROR))
+            return
 
 def get_respawn_window(boss_name):
     boss_name = boss_name.content[BOSS_NAME_INDEX:]
@@ -37,7 +40,7 @@ def get_respawn_window(boss_name):
             break
     
     if (boss_exists == False):
-        return BOSS_INPUT_ERROR
+        return boss_name
 
     return boss_name, respawn_window
 
