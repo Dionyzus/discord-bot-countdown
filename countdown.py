@@ -69,27 +69,13 @@ async def handle_hours_countdown(message, timer, sleepTime, boss):
     if timer - sleepTime < 0:
         handle_minutes_countdown(message, timer, SECONDS_IN_MINUTE, boss)
 
-    await asyncio.sleep(sleepTime)
-    timer-=sleepTime
-
-    display_timer = timer // SECONDS_IN_HOUR
-
-    await message.edit(content=create_message(boss, RS_STARTS_IN, str(display_timer), HOURS))
-
-    return timer
+    return await update_timer(message, timer, sleepTime, boss, HOURS, SECONDS_IN_HOUR)
 
 async def handle_minutes_countdown(message, timer, sleepTime, boss):
     if timer - sleepTime < 0:
         handle_seconds_countdown(message, timer, 10, boss)
 
-    await asyncio.sleep(sleepTime)
-    timer-=sleepTime
-
-    display_timer = timer // SECONDS_IN_MINUTE
-
-    await message.edit(content=create_message(boss, RS_STARTS_IN, str(display_timer), MINUTES))
-
-    return timer
+    return await update_timer(message, timer, sleepTime, boss, MINUTES, SECONDS_IN_MINUTE)
 
 async def handle_seconds_countdown(message, timer, sleepTime, boss):
     while True:
@@ -106,6 +92,15 @@ async def handle_seconds_countdown(message, timer, sleepTime, boss):
 
         await message.edit(content=create_message(boss, RS_STARTS_IN, str(timer), SECONDS))
 
+async def update_timer(message, timer, sleepTime, boss, unit, divisor):
+    await asyncio.sleep(sleepTime)
+    timer-=sleepTime
+
+    display_timer = timer // divisor
+
+    await message.edit(content=create_message(boss, RS_STARTS_IN, str(display_timer), unit))
+
+    return timer
 
 def create_message(*args):
     return ' '.join(args)
