@@ -11,7 +11,7 @@ MINI_BOSSES = ['gQueen', 'impKing', 'lizLead', 'tarenLead', 'kingC', 'tdl', 'eQu
 BOSSES = {
     '24h': GOD_BOSSES,
     '12h': DEMI_BOSSES,
-    '45m': MINI_BOSSES
+    '40m': MINI_BOSSES
 }
 
 HOURS = 'h'
