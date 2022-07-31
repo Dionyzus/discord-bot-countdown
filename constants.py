@@ -9,7 +9,7 @@ GOD_BOSSES = ['ogre', 'manti', 'bd', 'bapho', 'od', 'ds', 'behe']
 DEMI_BOSSES = ['bKing', 'uwc1', 'uwc2', 'mandra', 'plant', 'yQueen', 'balze8', 'balze9', 'balze10']
 MINI_BOSSES = ['gQueen', 'impKing', 'lizLead', 'tarenLead', 'kingC', 'tdl', 'eQueen', 'furAnt']
 BOSSES = {
-    '01m': GOD_BOSSES,
+    '24h': GOD_BOSSES,
     '12h': DEMI_BOSSES,
     '45m': MINI_BOSSES
 }
