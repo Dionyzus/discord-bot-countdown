@@ -14,24 +14,22 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    global respawnMessage
-
     if message.author == client.user:
         return
-
+    
     boss = ''
     respawn_window = 0
-
     if message.content.startswith(COMMAND_KEY):
         boss, respawn_window = get_respawn_window(message)
-        respawnMessage = await message.channel.send(create_message(boss, RS_STARTS_IN, respawn_window))
+        original_message = await message.channel.send(create_message(boss, RS_STARTS_IN, respawn_window))
 
-        await countdown(respawn_window, boss)
+        await countdown(original_message, respawn_window, boss)
 
 def get_respawn_window(boss_name):
     boss_name = boss_name.content[BOSS_NAME_INDEX:]
     boss_exists = False
     respawn_window = ''
+
     for key in BOSSES:
         if boss_name in BOSSES[key]:
             boss_exists = True
@@ -44,7 +42,7 @@ def get_respawn_window(boss_name):
     return boss_name, respawn_window
 
 @client.event
-async def countdown(respawn_window, boss):
+async def countdown(message, respawn_window, boss):
     unit = respawn_window[UNIT_INDEX]
     timer = int(respawn_window[:TIME_INDEX])
 
@@ -52,11 +50,11 @@ async def countdown(respawn_window, boss):
 
     while True:
         if timer > SECONDS_IN_HOUR:
-            timer = await handle_hours_countdown(timer, SECONDS_IN_HOUR, boss)
+            timer = await handle_hours_countdown(message, timer, SECONDS_IN_HOUR, boss)
         elif timer > SECONDS_IN_MINUTE:
-            timer = await handle_minutes_countdown(timer, SECONDS_IN_MINUTE, boss)
+            timer = await handle_minutes_countdown(message, timer, SECONDS_IN_MINUTE, boss)
         else:
-            countdown_done = await handle_seconds_countdown(timer, TEN_SECONDS, boss)
+            countdown_done = await handle_seconds_countdown(message, timer, TEN_SECONDS, boss)
             if countdown_done == True:
                 return
 
@@ -68,19 +66,19 @@ def convert_timer_to_seconds(timer, unit):
 
     return timer * SECONDS_IN_HOUR
 
-async def handle_hours_countdown(timer, sleepTime, boss):
+async def handle_hours_countdown(message, timer, sleepTime, boss):
     if timer - sleepTime < 0:
-        handle_minutes_countdown(timer, SECONDS_IN_MINUTE, boss)
+        handle_minutes_countdown(message, timer, SECONDS_IN_MINUTE, boss)
 
-    return await update_timer(timer, sleepTime, boss, HOURS, SECONDS_IN_HOUR)
+    return await update_timer(message, timer, sleepTime, boss, HOURS, SECONDS_IN_HOUR)
 
-async def handle_minutes_countdown(timer, sleepTime, boss):
+async def handle_minutes_countdown(message, timer, sleepTime, boss):
     if timer - sleepTime < 0:
         handle_seconds_countdown(message, timer, 10, boss)
 
-    return await update_timer(timer, sleepTime, boss, MINUTES, SECONDS_IN_MINUTE)
+    return await update_timer(message, timer, sleepTime, boss, MINUTES, SECONDS_IN_MINUTE)
 
-async def handle_seconds_countdown(timer, sleepTime, boss):
+async def handle_seconds_countdown(message, timer, sleepTime, boss):
     while True:
         if timer - sleepTime < 0:
             sleepTime = timer
@@ -89,19 +87,19 @@ async def handle_seconds_countdown(timer, sleepTime, boss):
         timer-=sleepTime
 
         if timer <= 0:
-            await respawnMessage.delete()
-            await respawnMessage.channel.send(create_message(boss, RS_STARTED))
+            await message.delete()
+            await message.channel.send(create_message(boss, RS_STARTED))
             return True
 
-        await respawnMessage.edit(content=create_message(boss, RS_STARTS_IN, str(timer), SECONDS))
+        await message.edit(content=create_message(boss, RS_STARTS_IN, str(timer), SECONDS))
 
-async def update_timer(timer, sleepTime, boss, unit, divisor):
+async def update_timer(message, timer, sleepTime, boss, unit, divisor):
     await asyncio.sleep(sleepTime)
     timer-=sleepTime
 
     display_timer = timer // divisor
 
-    await respawnMessage.edit(content=create_message(boss, RS_STARTS_IN, str(display_timer), unit))
+    await message.edit(content=create_message(boss, RS_STARTS_IN, str(display_timer), unit))
 
     return timer
 
