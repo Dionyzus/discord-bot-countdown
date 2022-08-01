@@ -1,6 +1,8 @@
 import discord
 import asyncio
 import os
+import time
+from datetime import datetime
 from constants import *
 from dotenv import load_dotenv
 
@@ -16,20 +18,68 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
-    
-    boss = ''
-    respawn_window = 0
+
+    actual_respawn_window = ''
+    hours_difference = 0
+    time_difference = 0
+
     if message.content.startswith(COMMAND_KEY):
+        command = message.content.split(' ')
+        if len(command) == CMD_TIME_INPUT_LENGTH:
+            boss_name = get_boss_name(command[ARRAY_BOSS_NAME])
+            respawn_window = get_respawn_window(boss_name)
+
+            time_difference = handle_time_input(message, command)
+            actual_respawn_window = offset_respawn_window(respawn_window, time_difference)
+
+            original_message = await send_initial_message(message, actual_respawn_window, boss_name)
+        else:
+            boss_name = get_boss_name(message.content)
+            respawn_window = get_respawn_window(boss_name)
+            actual_respawn_window = create_actual_timer(respawn_window)
+
+            original_message = await send_initial_message(message, actual_respawn_window, boss_name)
         try:
-            boss, respawn_window = get_respawn_window(message)
-            original_message = await message.channel.send(create_message(boss, RS_STARTS_IN, respawn_window))
-            await countdown(original_message, respawn_window, boss)
+            await countdown(original_message, boss_name, actual_respawn_window)
         except ValueError:
-            await message.channel.send(create_message(boss, BOSS_INPUT_ERROR))
+            await message.channel.send(create_message(boss_name, BOSS_INPUT_ERROR))
             return
 
+async def send_initial_message(message, actual_respawn_window, boss_name):
+    hours, minutes = convert_hour_minutes(actual_respawn_window)
+    return await message.channel.send(create_message(boss_name, RS_STARTS_IN, str(hours) + HOURS, str(minutes) + MINUTES))
+
+def create_actual_timer(respawn_window):
+    unit = respawn_window[UNIT_INDEX]
+    timer = int(respawn_window[:TIME_INDEX])
+
+    return convert_timer_to_seconds(timer, unit)
+
+def offset_respawn_window(respawn_window, offset):
+    unit = respawn_window[UNIT_INDEX]
+    timer = int(respawn_window[:TIME_INDEX])
+
+    timer_in_seconds = convert_timer_to_seconds(timer, unit)
+    offset_in_seconds = offset * SECONDS_IN_MINUTE
+
+    return timer_in_seconds - offset_in_seconds
+
+def handle_time_input(message, command):
+    killed_time = command[ARRAY_KILLED_TIME]
+    current_time = command[ARRAY_CURRENT_TIME]
+
+    dt_killed_time = datetime.strptime(killed_time, HOURS_MINUTES_FORMAT)
+    dt_current_time = datetime.strptime(current_time, HOURS_MINUTES_FORMAT)
+
+    hours_difference = (dt_current_time.hour - dt_killed_time.hour) - 1
+    minutes_difference =  (MINUTES_IN_HOUR - dt_killed_time.minute) + dt_current_time.minute
+
+    return (hours_difference * MINUTES_IN_HOUR) + minutes_difference
+
+def get_boss_name(command):
+    return command[BOSS_NAME_INDEX:]
+
 def get_respawn_window(boss_name):
-    boss_name = boss_name.content[BOSS_NAME_INDEX:]
     boss_exists = False
     respawn_window = ''
 
@@ -42,15 +92,10 @@ def get_respawn_window(boss_name):
     if (boss_exists == False):
         return boss_name
 
-    return boss_name, respawn_window
+    return respawn_window
 
 @client.event
-async def countdown(message, respawn_window, boss):
-    unit = respawn_window[UNIT_INDEX]
-    timer = int(respawn_window[:TIME_INDEX])
-
-    timer = convert_timer_to_seconds(timer, unit)
-
+async def countdown(message, boss, timer):
     while True:
         if timer is None:
             return
@@ -73,15 +118,15 @@ def convert_timer_to_seconds(timer, unit):
 
 async def handle_hours_countdown(message, timer, sleepTime, boss):
     if timer - sleepTime < 0:
-        handle_minutes_countdown(message, timer, SECONDS_IN_MINUTE, boss)
+        await handle_minutes_countdown(message, timer, SECONDS_IN_MINUTE, boss)
 
-    return await update_timer(message, timer, sleepTime, boss, HOURS, SECONDS_IN_HOUR)
+    return await update_timer(message, timer, sleepTime, boss)
 
 async def handle_minutes_countdown(message, timer, sleepTime, boss):
     if timer - sleepTime < 0:
-        handle_seconds_countdown(message, timer, 10, boss)
+        await handle_seconds_countdown(message, timer, 10, boss)
 
-    return await update_timer(message, timer, sleepTime, boss, MINUTES, SECONDS_IN_MINUTE)
+    return await update_timer(message, timer, sleepTime, boss)
 
 async def handle_seconds_countdown(message, timer, sleepTime, boss):
     while True:
@@ -96,12 +141,12 @@ async def handle_seconds_countdown(message, timer, sleepTime, boss):
 
         await edit_message(message, create_message(boss, RS_STARTS_IN, str(timer), SECONDS))
 
-async def update_timer(message, timer, sleepTime, boss, unit, divisor):
+async def update_timer(message, timer, sleepTime, boss):
     await asyncio.sleep(sleepTime)
     timer-=sleepTime
 
-    display_timer = timer // divisor
-    await edit_message(message, create_message(create_message(boss, RS_STARTS_IN, str(display_timer), unit)))
+    hours, minutes = convert_hour_minutes(timer)
+    await edit_message(message, create_message(create_message(boss, RS_STARTS_IN, str(hours) + HOURS, str(minutes) + MINUTES)))
 
     return timer
 
@@ -116,8 +161,24 @@ async def delete_and_send_new(message, new_message):
         await message.delete()
         await message.channel.send(new_message)
         return True
-    except discord.errors.NotFound:
+    except (discord.errors.NotFound, discord.errors.HTTPException): 
         return
+
+def convert_hour_minutes(seconds):
+    more_than_hour = False
+    if seconds > SECONDS_IN_HOUR:
+        more_than_hour = True
+
+    seconds = seconds % (HOURS_IN_DAY * SECONDS_IN_HOUR)
+    hours = seconds // SECONDS_IN_HOUR
+    seconds %= SECONDS_IN_HOUR
+    minutes = seconds // SECONDS_IN_MINUTE
+    seconds %= SECONDS_IN_MINUTE
+
+    if hours == 0 and more_than_hour:
+        return HOURS_IN_DAY, minutes
+
+    return hours, minutes
 
 def create_message(*args):
     return ' '.join(args)
