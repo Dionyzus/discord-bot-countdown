@@ -52,13 +52,15 @@ async def countdown(message, respawn_window, boss):
     timer = convert_timer_to_seconds(timer, unit)
 
     while True:
+        if timer is None:
+            return
         if timer > SECONDS_IN_HOUR:
             timer = await handle_hours_countdown(message, timer, SECONDS_IN_HOUR, boss)
         elif timer > SECONDS_IN_MINUTE:
             timer = await handle_minutes_countdown(message, timer, SECONDS_IN_MINUTE, boss)
         else:
             countdown_done = await handle_seconds_countdown(message, timer, TEN_SECONDS, boss)
-            if countdown_done == True:
+            if countdown_done == True or countdown_done is None:
                 return
 
 def convert_timer_to_seconds(timer, unit):
@@ -90,21 +92,32 @@ async def handle_seconds_countdown(message, timer, sleepTime, boss):
         timer-=sleepTime
 
         if timer <= 0:
-            await message.delete()
-            await message.channel.send(create_message(boss, RS_STARTED))
-            return True
+            await delete_and_send_new(message, create_message(boss, RS_STARTED))
 
-        await message.edit(content=create_message(boss, RS_STARTS_IN, str(timer), SECONDS))
+        await edit_message(message, create_message(boss, RS_STARTS_IN, str(timer), SECONDS))
 
 async def update_timer(message, timer, sleepTime, boss, unit, divisor):
     await asyncio.sleep(sleepTime)
     timer-=sleepTime
 
     display_timer = timer // divisor
-
-    await message.edit(content=create_message(boss, RS_STARTS_IN, str(display_timer), unit))
+    await edit_message(message, create_message(create_message(boss, RS_STARTS_IN, str(display_timer), unit)))
 
     return timer
+
+async def edit_message(message, message_content):
+    try:
+        await message.edit(content=message_content)
+    except discord.errors.NotFound:
+        return
+
+async def delete_and_send_new(message, new_message):
+    try:
+        await message.delete()
+        await message.channel.send(new_message)
+        return True
+    except discord.errors.NotFound:
+        return
 
 def create_message(*args):
     return ' '.join(args)
