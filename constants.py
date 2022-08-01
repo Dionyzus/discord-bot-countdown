@@ -4,6 +4,8 @@ COMMAND_KEY = '$'
 RS_STARTS_IN = 'respawn window starts in:'
 RS_STARTED = 'respawn window started!'
 BOSS_INPUT_ERROR = 'Wrong boss value'
+TIME_INPUT_ERROR = 'Passed wrong time values, must be HH:MM format, e.g. 9:15 10:00'
+UNSUPPORTED_COMMAND = 'Unsuppored command input, view README.md'
 
 GOD_BOSSES = ['ogre', 'manti', 'bd', 'bapho', 'od', 'ds', 'behe']
 DEMI_BOSSES = ['bKing', 'uwc1', 'uwc2', 'mandra', 'plant', 'yQueen', 'balze8', 'balze9', 'balze10']

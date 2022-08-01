@@ -25,13 +25,16 @@ def get_respawn_offset(message, command):
     killed_time = command[ARRAY_KILLED_TIME]
     current_time = command[ARRAY_CURRENT_TIME]
 
-    dt_killed_time = datetime.strptime(killed_time, HOURS_MINUTES_FORMAT)
-    dt_current_time = datetime.strptime(current_time, HOURS_MINUTES_FORMAT)
+    try:
+        dt_killed_time = datetime.strptime(killed_time, HOURS_MINUTES_FORMAT)
+        dt_current_time = datetime.strptime(current_time, HOURS_MINUTES_FORMAT)
+    except ValueError:
+        return None, TIME_INPUT_ERROR
 
     hours_difference = (dt_current_time.hour - dt_killed_time.hour) - 1
     minutes_difference =  (MINUTES_IN_HOUR - dt_killed_time.minute) + dt_current_time.minute
 
-    return (hours_difference * MINUTES_IN_HOUR) + minutes_difference
+    return (hours_difference * MINUTES_IN_HOUR) + minutes_difference, None
 
 def offset_respawn_window(respawn_window, offset):
     unit = respawn_window[UNIT_INDEX]
